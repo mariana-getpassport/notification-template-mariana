@@ -1,0 +1,11 @@
+recursive-include src/package_server *
+recursive-exclude src/package_server/**/__pycache__ *
+
+exclude .gitignore .pre-commit-config.yaml .coverage .DS_Store
+exclude CHANGELOG.md MANIFEST.in UPSTREAM_README.md UPSTREAM_CHANGELOG.md Dockerfile requirements.txt
+exclude commitlint.rules.js mypy.ini pylintrc pyproject.toml .flake8
+recursive-exclude .github *
+recursive-exclude docs *
+recursive-exclude tests *
+recursive-exclude .pytest_cache *
+recursive-exclude .hypotheis *
