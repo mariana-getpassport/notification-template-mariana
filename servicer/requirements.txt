@@ -1,0 +1,1 @@
+package-grpc @ git+https://${PASSPORT_CI_TOKEN}@github.com/getpassport/python-services-template.git#subdirectory=servicer_grpc

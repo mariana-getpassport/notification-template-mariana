@@ -1,0 +1,54 @@
+name: Docker Image CI
+
+on:
+  workflow_run:
+    workflows: [Pull Request]
+    types:
+    - completed
+    branches: [main, develop]
+
+jobs:
+
+  build:
+
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        python: ['3.9']
+
+    env:
+      REGISTRY: ghcr.io
+      # github.repository as <account>/<repo>
+      IMAGE_NAME: ${{ github.repository }}
+
+    steps:
+    - name: Extract Branch Name
+      shell: bash
+      run: |
+        branchName=${GITHUB_REF#refs/heads/}
+        branchName=${branchName,,}
+        if [ $branchName = 'main' ]; then additionalImageName=''; else additionalImageName="${branchName}"; fi
+        echo "::set-output name=additionalImageName::$(echo $additionalImageName)"
+      id: extract_branch
+
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Log into registry ${{ env.REGISTRY }}
+      uses: docker/login-action@28218f9b04b4f3f62068d7b6ce6ca5b26e35336c
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.CI_TOKEN }}
+
+    - name: Build and push
+      id: docker_build
+      uses: docker/build-push-action@v2
+      with:
+        context: .
+        file: servicer/Dockerfile
+        push: true
+        tags: ${{env.REGISTRY }}/${{env.IMAGE_NAME}}.${{ steps.extract_branch.outputs.additionalImageName }}
+        secrets: |
+          "PASSPORT_CI_TOKEN=${{ secrets.CI_TOKEN}}"
