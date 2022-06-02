@@ -1,0 +1,73 @@
+# This workflow will lint the PR's title and commit message.
+# https://github.com/CondeNast/conventional-pull-request-action
+# https://github.com/conventional-changelog/commitlint/blob/master/docs/reference-rules.md
+# https://github.com/CondeNast/conventional-pull-request-action/issues/15
+
+name: Pull Request
+
+env:
+  PASSPORT_CI_TOKEN: ${{ secrets.CI_TOKEN }}
+
+on:
+  pull_request:
+    branches:
+    - '*'
+    types:
+    - opened
+    - edited
+    - synchronize
+jobs:
+  pr:
+    name: Lint PR title
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+    - uses: actions/checkout@v2
+    - uses: CondeNast/conventional-pull-request-action@v0.1.2
+      with:
+        commitlintRulesPath: ./commitlint.rules.js
+        commitTitleMatch: 'true'
+  check:
+    needs: pr
+    name: Check Python ${{ matrix.python }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+#        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest]
+        python: ['3.9', '3.10']
+    env:
+      PASSPORT_CI_TOKEN: ${{ secrets.CI_TOKEN }}
+      PASSPORT_CONFIG: servicer/getpassport-github.ini
+    services:
+      postgres:
+        image: postgres:14
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: testdb
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+        - 5432:5432
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python ${{ matrix.python }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python }}
+    - name: Create virtual environment
+      run: |
+        make venv
+    - name: Install dependencies
+      run: |
+        source venv/bin/activate
+        make setup-dev
+    - name: Run checks
+      run: |
+        source venv/bin/activate
+        make check
