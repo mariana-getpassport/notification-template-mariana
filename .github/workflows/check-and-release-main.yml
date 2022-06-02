@@ -1,0 +1,73 @@
+# When pushing to master, we run checks and then release.
+
+name: Check and Release
+
+on:
+  push:
+    branches:
+    - main
+
+jobs:
+  check:
+    name: Check Python ${{ matrix.python }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+#        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest]
+        python: ['3.9', '3.10']
+    env:
+      PASSPORT_CI_TOKEN: ${{ secrets.CI_TOKEN }}
+      PASSPORT_CONFIG: servicer/getpassport-github.ini
+    services:
+      postgres:
+        image: postgres:14
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: testdb
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+        - 5432:5432
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python ${{ matrix.python }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python }}
+    - name: Create virtual environment
+      run: |
+        make venv
+    - name: Install dependencies
+      run: |
+        source venv/bin/activate
+        make setup-dev
+    - name: Run checks
+      run: |
+        source venv/bin/activate
+        make check
+
+  release:
+    needs: check
+    name: Release
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+    - name: Python Semantic Release GRPC
+      uses: relekang/python-semantic-release@v7.23.0
+      with:
+        directory: ./servicer_grpc
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        pypi_token: ''  # We don't publish to PyPi: ${{ secrets.PYPI_TOKEN }}
+    - name: Python Semantic Release SERVICER
+      uses: relekang/python-semantic-release@v7.23.0
+      with:
+        directory: ./servicer
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        pypi_token: ''  # We don't publish to PyPi: ${{ secrets.PYPI_TOKEN }}
