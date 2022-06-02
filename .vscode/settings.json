@@ -1,0 +1,7 @@
+{
+  "python.analysis.extraPaths": [
+    "./servicer/src",
+    "./servicer_grpc/src"
+  ],
+  "python.defaultInterpreterPath": "./venv/bin/python"
+}
