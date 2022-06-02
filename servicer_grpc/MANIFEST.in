@@ -1,0 +1,11 @@
+recursive-include src/package_grpc *
+recursive-exclude src/package_grpc/**/__pycache__ *
+
+exclude .gitignore .pre-commit-config.yaml .coverage
+exclude CHANGELOG.md MANIFEST.in .DS_Store
+exclude mypy.ini pylintrc pyproject.toml .flake8
+recursive-exclude .github *
+recursive-exclude docs *
+recursive-exclude tests *
+recursive-exclude .pytest_cache *
+recursive-exclude .hypotheis *

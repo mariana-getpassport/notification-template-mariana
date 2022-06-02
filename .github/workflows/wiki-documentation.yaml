@@ -1,0 +1,40 @@
+# This workflow publishes Markdown docs to Github Wiki.
+# Some manual setup is required before using it:
+#   Enable Wiki in repository and create at least one page.
+# For details, see https://github.com/marketplace/actions/publish-to-github-wiki#setup
+
+name: Generate Wiki Pages
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  generate-wiki:
+    runs-on: ubuntu-latest
+    env:
+      PASSPORT_CI_TOKEN: ${{ secrets.CI_TOKEN }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    - name: Set up Python
+      uses: actions/setup-python@v3
+      with:
+        python-version: '3.10'
+    - name: Install dependencies for docs
+      run: |
+        pip install --upgrade pip
+        pip install ./servicer[docs]
+    - name: Generate Markdown
+      run: |
+        make -C servicer/docs/ markdown
+        make -C servicer_grpc/docs/ markdown
+        mkdir -p wiki/servicer wiki/servicer_grpc
+        mv servicer/docs/_build/markdown/* wiki/servicer
+        mv servicer_grpc/docs/_build/markdown/* wiki/servicer_grpc
+    - name: Push to Wiki
+      uses: SwiftDocOrg/github-wiki-publish-action@v1
+      with:
+        path: wiki
+      env:
+        GH_PERSONAL_ACCESS_TOKEN: ${{ secrets.CI_TOKEN }}
