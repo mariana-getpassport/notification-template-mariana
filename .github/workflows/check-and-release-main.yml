@@ -1,0 +1,60 @@
+# When pushing to master, we run checks and then release.
+
+name: Check and Release
+
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  PASSPORT_CI_TOKEN: ${{ secrets.CI_TOKEN }}
+
+on:
+  push:
+    branches:
+    - main
+
+jobs:
+  check:
+    name: Check Python ${{ matrix.python }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+#        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest]
+        python: ['3.9', '3.10']
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python ${{ matrix.python }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python }}
+    - name: Install dependencies
+      run: |
+        pip install --upgrade pip
+        pip install pre-commit
+        pip install -e ./servicer/[test,dev]
+        pip install -e ./servicer_grpc/[test,dev]
+    - name: Run checks
+      run: |
+        pre-commit run --hook-stage commit --all-files
+        pre-commit run --hook-stage push --all-files
+
+  release:
+    needs: check
+    name: Release
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+    - name: Python Semantic Release GRPC
+      uses: relekang/python-semantic-release@v7.23.0
+      with:
+        directory: ./servicer_grpc
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        pypi_token: ''  # We don't publish to PyPi: ${{ secrets.PYPI_TOKEN }}
+    - name: Python Semantic Release SERVICER
+      uses: relekang/python-semantic-release@v7.23.0
+      with:
+        directory: ./servicer
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        pypi_token: ''  # We don't publish to PyPi: ${{ secrets.PYPI_TOKEN }}

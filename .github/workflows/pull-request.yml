@@ -1,0 +1,55 @@
+# This workflow will lint the PR's title and commit message.
+# https://github.com/CondeNast/conventional-pull-request-action
+# https://github.com/conventional-changelog/commitlint/blob/master/docs/reference-rules.md
+# https://github.com/CondeNast/conventional-pull-request-action/issues/15
+
+name: Pull Request
+
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  PASSPORT_CI_TOKEN: ${{ secrets.CI_TOKEN }}
+
+on:
+  pull_request:
+    branches:
+    - '*'
+    types:
+    - opened
+    - edited
+    - synchronize
+jobs:
+  pr:
+    name: Lint PR title
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: CondeNast/conventional-pull-request-action@v0.1.2
+      with:
+        commitlintRulesPath: ./commitlint.rules.js
+        commitTitleMatch: 'true'
+  check:
+    needs: pr
+    name: Check Python ${{ matrix.python }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+#        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest]
+        python: ['3.9', '3.10']
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python ${{ matrix.python }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python }}
+    - name: Install dependencies
+      run: |
+        pip install --upgrade pip
+        pip install pre-commit
+        pip install -e ./servicer/[test,dev]
+        pip install -e ./servicer_grpc/[test,dev]
+    - name: Run checks
+      run: |
+        pre-commit run --hook-stage commit --all-files
+        pre-commit run --hook-stage push --all-files
